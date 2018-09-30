@@ -1,0 +1,27 @@
+{
+  "name": "luke-cost-one",
+  "version": "1.0.0",
+  "description": "Contracts and DApp for LUKE's experiment with a common ownership self assessed tax",
+  "main": "truffle-config.js",
+  "directories": {
+    "test": "test"
+  },
+  "dependencies": {
+    "openzeppelin-solidity": "^1.12.0",
+    "web3": "^1.0.0-beta.36"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jessebmiller/luke-cost-one.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/jessebmiller/luke-cost-one/issues"
+  },
+  "homepage": "https://github.com/jessebmiller/luke-cost-one#readme"
+}
