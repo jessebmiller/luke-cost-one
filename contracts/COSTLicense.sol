@@ -8,7 +8,7 @@ contract COSTLicense {
   bytes32 public licenseAgreementHash;
   address public licenseHolder;
   uint public assessedValue;
-  uint public anualTaxRate;
+  uint public annualTaxRate;
   address public beneficiary;
 
   mapping(address => uint) public balances;
@@ -17,11 +17,11 @@ contract COSTLicense {
 
   constructor(bytes32 _licenseAgreementHash,
               uint _assessedValue,
-              uint _anualTaxRate,
+              uint _annualTaxRate,
               address _beneficiary) public {
 
     require(_licenseAgreementHash != bytes32(0));
-    require(_anualTaxRate > 0);
+    require(_annualTaxRate > 0);
     require(_assessedValue > 0);
     require(_beneficiary != address(0));
 
@@ -29,17 +29,18 @@ contract COSTLicense {
     licenseHolder = _beneficiary;
     beneficiary = _beneficiary;
     assessedValue = _assessedValue;
-    anualTaxRate = _anualTaxRate;
+    annualTaxRate = _annualTaxRate;
   }
 
   // buy the license for the assessed value
   function buy(uint newAssessment,
-               bytes32 signedLicenseAgreementHash,
+               bytes32 agreement,
                uint8 v,
                bytes32 r,
                bytes32 s) public payable {
     collectTaxes();
-    address signingAddress = ecrecover(signedLicenseAgreementHash, v, r, s);
+    address signingAddress = ecrecover(agreement, v, r, s);
+    require(signingAddress != address(0));
     require(newAssessment > 0);
     require(msg.value == assessedValue);
 
@@ -64,7 +65,7 @@ contract COSTLicense {
 
   // TODO reduce rounding errors as much as possible
   function _doCollectTaxes() internal {
-    uint taxPerYear = (assessedValue * anualTaxRate) / 100;
+    uint taxPerYear = (assessedValue * annualTaxRate) / 100;
     uint taxPerSecond = taxPerYear / 31536000; // seconds per year
     uint taxableSeconds = now - lastCollectionTime;
     uint taxAmount = taxableSeconds * taxPerSecond;
