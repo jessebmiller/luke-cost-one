@@ -1,6 +1,32 @@
+const { hashPersonalMessage, ecsign } = require('ethereumjs-util')
+
 const COSTLicense = artifacts.require("./COSTLicense.sol")
 
+function splitSig(sig) {
+  console.log(sig)
+  const s = {
+    v: web3.toDecimal('0x' + sig.slice(130, 132)),
+    r: sig.slice(0, 66),
+    s: sig.slice(66, 130)
+  }
+  if (s.v != 27 || s.v != 28) {
+    s.v += 27
+  }
+  console.log(s)
+  return s
+}
+
+function signAgreement(signer, agreement) {
+  return splitSig(
+    web3.eth.sign(signer, web3.sha3(agreement))
+  )
+}
+
 contract("COSTLicence", ([alice, bob, carol, vick, ...accounts]) => {
+  console.log("Alice", alice)
+  console.log("Bob  ", bob)
+  console.log("Carol", carol)
+  console.log("Vick ", vick)
 
   const agreement = "Stub agreement"
   const agreementHash = web3.sha3(agreement)
@@ -26,20 +52,17 @@ contract("COSTLicence", ([alice, bob, carol, vick, ...accounts]) => {
   })
 
   it("Can be bought for the assessed value", async () => {
-    const signature = web3.eth.sign(bob, agreement).substr(2) // remove 0x
-    const r = '0x' + signature.slice(0, 64)
-    const s = '0x' + signature.slice(64, 128)
-    const v = '0x' + signature.slice(128, 130)
-    const vDec = web3.toDecimal(v)
+    const sig = signAgreement(bob, agreement)
+    const agreementHash = web3.sha3(
+      agreement
+//      `\x19Ethereum Signed Message:\n${agreement.length}${agreement}`
+    )
     const newAssessedValue = web3.toWei("11", "ether")
     const aliceBeforeSale = await web3.eth.getBalance(alice)
     const bobBeforeSale = await web3.eth.getBalance(bob)
     await license.buy(
       newAssessedValue,
-      `\x19Ethereum Signed Message:\n${agreement.length}${agreement}`,
-      vDec,
-      r,
-      s,
+      "By signing this transaction I agree to the contract's licence agreement",
       {value: assessedValue, from: bob})
     assert.equal(await license.licenseHolder(), bob)
     assert.equal(await license.assessedValue(), newAssessedValue)

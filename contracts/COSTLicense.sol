@@ -2,8 +2,7 @@ pragma solidity ^0.4.22;
 
 contract COSTLicense {
 
-  // if a license holder misses payment, anyone can start a second price auction
-  // for the license
+  event Address(string message, address addr);
 
   bytes32 public licenseAgreementHash;
   address public licenseHolder;
@@ -33,21 +32,16 @@ contract COSTLicense {
   }
 
   // buy the license for the assessed value
-  function buy(uint newAssessment,
-               bytes32 agreement,
-               uint8 v,
-               bytes32 r,
-               bytes32 s) public payable {
+  function buy(uint newAssessment, string agreementStatement) public payable {
     collectTaxes();
-    address signingAddress = ecrecover(agreement, v, r, s);
-    require(signingAddress != address(0));
-    require(newAssessment > 0);
-    require(msg.value == assessedValue);
+    require(sha3(agreementStatement) == sha3("By signing this transaction I agree to the contract's licence agreement"));
+    require(newAssessment > 0, "Zero new assessment");
+    require(msg.value == assessedValue, "Sent incorrect value with transaction");
 
     licenseHolder.transfer(assessedValue);
 
     assessedValue = newAssessment;
-    licenseHolder = signingAddress;
+    licenseHolder = msg.sender;
   }
 
   function assessValue(uint newAssessedValue) public {
