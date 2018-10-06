@@ -16,10 +16,6 @@ contract SplitPaymentBeneficiary is SplitPayment, Ownable {
     licenseContract = COSTLicense(_licenseContractAddress);
   }
 
-  function withdraw(uint _amount) public {
-    licenseContract.withdraw(_amount);
-  }
-
   function assessValue(uint _newAssessedValue) public onlyOwner {
     licenseContract.assessValue(_newAssessedValue);
   }
