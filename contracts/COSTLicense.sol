@@ -2,15 +2,17 @@ pragma solidity ^0.4.22;
 
 contract COSTLicense {
 
-  event Address(string message, address addr);
-  event Uint(string message, uint n);
+  event Address(string msg, address addr);
 
   bytes32 public licenseAgreementHash;
   string public attestation;
   address public licenseHolder;
   uint public assessedValue;
   uint public annualTaxRate;
+  address public creator;
   address public beneficiary;
+  uint public beneficiarySaleBasisPoints;
+  uint public beneficiaryTaxBasisPoints;
 
   mapping(address => uint) public balances;
 
@@ -19,17 +21,27 @@ contract COSTLicense {
   constructor(bytes32 _licenseAgreementHash,
               uint _assessedValue,
               uint _annualTaxRate,
+              address _creator,
               address _beneficiary,
+              uint _beneficiarySaleBasisPoints,
+              uint _beneficiaryTaxBasisPoints,
               string _attestation) public {
 
     require(_licenseAgreementHash != bytes32(0));
     require(_annualTaxRate > 0);
     require(_assessedValue > 0);
-    require(_beneficiary != address(0));
+    require(_creator != address(0));
+    if(_beneficiary == address(0)) {
+      require(_beneficiarySaleBasisPoints == 0);
+      require(_beneficiaryTaxBasisPoints == 0);
+    }
 
     licenseAgreementHash = _licenseAgreementHash;
-    licenseHolder = _beneficiary;
+    licenseHolder = _creator;
+    creator = _creator;
     beneficiary = _beneficiary;
+    beneficiarySaleBasisPoints = _beneficiarySaleBasisPoints;
+    beneficiaryTaxBasisPoints = _beneficiaryTaxBasisPoints;
     assessedValue = _assessedValue;
     annualTaxRate = _annualTaxRate;
     attestation = _attestation;
@@ -43,7 +55,16 @@ contract COSTLicense {
     require(_newAssessment > 0, "Zero new assessment");
     require(msg.value == assessedValue, "Sent incorrect value with transaction");
 
-    licenseHolder.transfer(assessedValue);
+    if(licenseHolder == creator) {
+      // split sale with beneficiary
+      uint beneficiaryShare = (assessedValue * beneficiarySaleBasisPoints) / 10000;
+      uint creatorShare = assessedValue - beneficiaryShare;
+      assert(beneficiaryShare + creatorShare == assessedValue);
+      balances[beneficiary] += beneficiaryShare;
+      balances[licenseHolder] += creatorShare;
+    } else {
+      balances[licenseHolder] += assessedValue;
+    }
 
     assessedValue = _newAssessment;
     licenseHolder = msg.sender;
@@ -56,11 +77,7 @@ contract COSTLicense {
   }
 
   function collectTaxes() public {
-    emit Address("collectTaxes called by:", msg.sender);
-    emit Uint("now", now);
-    emit Uint("lastCollectionTime", lastCollectionTime);
     if (licenseHolder != beneficiary) {
-      emit Address("do collect taxes", licenseHolder);
       _doCollectTaxes();
     }
     lastCollectionTime = now;
@@ -71,22 +88,21 @@ contract COSTLicense {
     uint taxPerYear = (assessedValue * annualTaxRate) / 100;
     uint taxPerSecond = taxPerYear / 31536000; // seconds per year
     uint taxableSeconds = now - lastCollectionTime;
-    emit Uint("taxableSeconds", taxableSeconds);
     uint taxAmount = taxableSeconds * taxPerSecond;
     // if license holder doesn't have enough in their balance to pay
     if (balances[licenseHolder] < taxAmount) {
       // reclaim the license, allowing the beneficiary to set a sale price
       // in the future this could automatically allow anyone to open a
       // second price auction for the license
-      emit Address("licence holder didn't have enough tax", licenseHolder);
-      licenseHolder = beneficiary;
+      licenseHolder = creator;
     } else {
       // otherwise collect the taxes
       balances[licenseHolder] -= taxAmount;
-
-      // TODO should we just send it to the beneficiary so they don't have to
-      // witndraw?
-      balances[beneficiary] += taxAmount;
+      uint beneficiaryShare = (taxAmount * beneficiarySaleBasisPoints) / 10000;
+      uint creatorShare = taxAmount - beneficiaryShare;
+      assert(beneficiaryShare + creatorShare == taxAmount);
+      balances[beneficiary] += beneficiaryShare;
+      balances[creator] += creatorShare;
     }
   }
 
